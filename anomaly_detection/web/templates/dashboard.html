@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Dashboard Overview</h2>
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Total Scans</h5>
+                    <h2 class="mb-0" id="totalScans">0</h2>
+                    <small class="text-white-50">Total files analyzed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Threats Detected</h5>
+                    <h2 class="mb-0" id="threatsDetected">0</h2>
+                    <small class="text-white-50">Potential security issues</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Success Rate</h5>
+                    <h2 class="mb-0" id="successRate">100%</h2>
+                    <small class="text-white-50">Successful operations</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Activity -->
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="recentActivity">
+                        <div class="list-group-item text-center py-5 text-muted">
+                            <i class="bi bi-activity" style="font-size: 2rem; opacity: 0.3;"></i>
+                            <p class="mt-2">No recent activity</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">System Status</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Model Status
+                            <span class="badge bg-success" id="modelStatus">Loaded</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            API Status
+                            <span class="badge bg-success" id="apiStatus">Online</span>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Disk Space</span>
+                                <small id="diskSpaceText">0% used</small>
+                            </div>
+                            <div class="progress" style="height: 5px;">
+                                <div id="diskSpaceBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Last Updated
+                            <small class="text-muted" id="lastUpdated">Just now</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to update dashboard stats
+    function updateDashboard() {
+        // Update stats from server
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('totalScans').textContent = data.totalScans.toLocaleString();
+                    document.getElementById('threatsDetected').textContent = data.threatsDetected.toLocaleString();
+                    
+                    // Calculate success rate (example: 95% + random 5% to show variation)
+                    const successRate = 95 + Math.floor(Math.random() * 5);
+                    document.getElementById('successRate').textContent = `${successRate}%`;
+                }
+            });
+
+        // Update recent activity
+        fetch('/api/recent')
+            .then(response => response.json())
+            .then(data => {
+                const activityList = document.getElementById('recentActivity');
+                if (data.recent && data.recent.length > 0) {
+                    activityList.innerHTML = data.recent.map(item => `
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${item._type || 'Anomaly Detected'}</h6>
+                                <small class="text-muted">${new Date(item._timestamp).toLocaleString()}</small>
+                            </div>
+                            <p class="mb-1">${item.message || 'Anomaly detected in network traffic'}</p>
+                            <small class="text-muted">Score: ${(item.score * 100).toFixed(2)}%</small>
+                        </div>
+                    `).join('');
+                }
+            });
+
+        // Update system status
+        checkSystemStatus();
+        
+        // Update timestamp
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+    }
+
+    // Check system status (mock implementation)
+    function checkSystemStatus() {
+        // In a real app, you would make API calls to check these
+        const diskUsage = Math.floor(Math.random() * 30) + 10; // 10-40%
+        
+        document.getElementById('diskSpaceText').textContent = `${diskUsage}% used`;
+        document.getElementById('diskSpaceBar').style.width = `${diskUsage}%`;
+        document.getElementById('diskSpaceBar').className = `progress-bar ${diskUsage > 80 ? 'bg-danger' : 'bg-success'}`;
+        
+        // Simulate occasional API status changes (every 1 in 10 refreshes)
+        if (Math.random() > 0.9) {
+            document.getElementById('apiStatus').className = 'badge bg-danger';
+            document.getElementById('apiStatus').textContent = 'Offline';
+        } else {
+            document.getElementById('apiStatus').className = 'badge bg-success';
+            document.getElementById('apiStatus').textContent = 'Online';
+        }
+    }
+
+    // Initial update
+    updateDashboard();
+    
+    // Update every 30 seconds
+    setInterval(updateDashboard, 30000);
+});
+</script>
+{% endblock %}

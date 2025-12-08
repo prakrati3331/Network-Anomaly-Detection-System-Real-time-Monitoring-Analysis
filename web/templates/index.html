@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Traffic Anomaly Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --severity-high: #dc3545;
+            --severity-medium: #fd7e14;
+            --severity-low: #ffc107;
+            --severity-normal: #28a745;
+        }
+        
+        .anomaly-high {
+            animation: pulse 1.5s infinite;
+            border-left: 4px solid var(--severity-high);
+        }
+        
+        .anomaly-medium {
+            animation: pulse 2s infinite;
+            border-left: 4px solid var(--severity-medium);
+        }
+        
+        .anomaly-low {
+            border-left: 4px solid var(--severity-low);
+        }
+        
+        .normal {
+            border-left: 4px solid var(--severity-normal);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        .severity-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .severity-high {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .severity-medium {
+            background-color: #ffedd5;
+            color: #9a3412;
+        }
+        
+        .severity-low {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .severity-normal {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        
+        .feature-value {
+            background-color: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-shield-alt text-blue-500 mr-2"></i>
+                Network Traffic Anomaly Detection
+            </h1>
+            <p class="text-gray-600">Real-time detection and analysis of network traffic patterns</p>
+        </header>
+
+        <div class="max-w-5xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Main Detection Panel -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-semibold text-gray-800">
+                                    <i class="fas fa-chart-line text-blue-500 mr-2"></i>
+                                    Live Detection
+                                </h2>
+                                <div class="flex items-center">
+                                    <div id="status" class="h-3 w-3 rounded-full bg-gray-400 mr-2"></div>
+                                    <span id="status-text" class="text-sm text-gray-600">Idle</span>
+                                </div>
+                            </div>
+
+                            <div id="detection-container" class="mb-6 p-6 rounded-lg border border-gray-200 transition-all duration-300">
+                                <div class="text-center py-8">
+                                    <div id="result">
+                                        <div id="normal-state" class="hidden">
+                                            <div class="text-green-500 text-5xl mb-3">
+                                                <i class="fas fa-check-circle"></i>
+                                            </div>
+                                            <p class="text-xl font-medium text-gray-700">Normal Traffic</p>
+                                            <p class="text-sm text-gray-500 mt-1">No anomalies detected</p>
+                                            <div class="mt-4">
+                                                <span class="severity-badge severity-normal">
+                                                    <i class="fas fa-shield-alt mr-1"></i> NORMAL
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div id="anomaly-state" class="hidden">
+                                            <div id="anomaly-icon" class="text-5xl mb-3">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </div>
+                                            <p class="text-xl font-medium text-gray-700">Anomaly Detected!</p>
+                                            <p id="anomaly-severity" class="text-sm font-medium mt-1"></p>
+                                            <div class="mt-4">
+                                                <span id="severity-badge" class="severity-badge">
+                                                    <i class="fas fa-shield-alt mr-1"></i>
+                                                    <span id="severity-text"></span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                        <div id="anomaly-details" class="mt-6 text-left hidden">
+                            <h3 class="font-medium text-gray-700 mb-2">Detection Details:</h3>
+                            <div class="bg-gray-50 p-4 rounded">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">Anomaly Score</p>
+                                        <p id="anomaly-score" class="font-mono">-0.0000</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-500">Timestamp</p>
+                                        <p id="detection-time" class="font-mono">-</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4" id="features-container">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Feature Values:</h4>
+                                    <div id="features-list" class="text-xs font-mono bg-white p-2 rounded border max-h-40 overflow-y-auto">
+                                        <!-- Features will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-lg font-medium text-gray-800 mb-4">Test with Sample Data</h3>
+                        <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <button onclick="testNormalTraffic()" class="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Test Normal
+                            </button>
+                            <button onclick="testRandomTraffic()" class="flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-random mr-2"></i>
+                                Test Random
+                            </button>
+                            <button onclick="testAnomalousTraffic()" class="flex items-center justify-center bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                Test Anomaly
+                            </button>
+                        </div>
+                    </div>
+
+                    <form onsubmit="event.preventDefault(); processUploadedFile();" class="mt-8 border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-medium text-gray-800 mb-4">
+                            <i class="fas fa-upload mr-2 text-blue-500"></i>
+                            Upload Custom Data
+                        </h3>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center">
+                            <div class="flex-1 w-full">
+                                <label class="flex flex-col items-center px-4 py-6 bg-white text-blue-500 rounded-lg border-2 border-dashed border-blue-300 cursor-pointer hover:bg-blue-50 transition-colors">
+                                    <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                                    <span class="text-sm text-gray-600">Click to upload or drag and drop</span>
+                                    <span class="text-xs text-gray-500 mt-1">CSV files only (max 1GB)</span>
+                                    <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleFileSelect(this)">
+                                </label>
+                            </div>
+                            <button type="submit" class="mt-3 sm:mt-0 sm:ml-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" id="analyze-btn" disabled>
+                                <i class="fas fa-search mr-2"></i>
+                                Analyze Data
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <span id="file-name" class="text-sm text-gray-500">No file chosen</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Status indicators
+        const statusIndicator = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const detectionContainer = document.getElementById('detection-container');
+        
+        // Result elements
+        const resultElement = document.getElementById('result');
+        const scoreElement = document.getElementById('anomaly-score');
+        const detailsElement = document.getElementById('anomaly-details');
+        
+        // Update status indicator
+        function updateStatus(loading = false, success = null) {
+            if (loading) {
+                statusIndicator.className = 'h-3 w-3 rounded-full bg-yellow-400 animate-pulse';
+                statusText.textContent = 'Analyzing...';
+                return;
+            }
+            
+            if (success === true) {
+                statusIndicator.className = 'h-3 w-3 rounded-full bg-green-500';
+                statusText.textContent = 'Active';
+            } else if (success === false) {
+                statusIndicator.className = 'h-3 w-3 rounded-full bg-red-500';
+                statusText.textContent = 'Error';
+            } else {
+                statusIndicator.className = 'h-3 w-3 rounded-full bg-gray-400';
+                statusText.textContent = 'Idle';
+            }
+        }
+        
+        function showResult(isAnomaly, score, features, severity = 'normal') {
+    updateStatus(false, true);
+    
+    // Get all required DOM elements
+    const container = document.getElementById('detection-container');
+    const normalState = document.getElementById('normal-state');
+    const anomalyState = document.getElementById('anomaly-state');
+    const anomalyIcon = document.getElementById('anomaly-icon');
+    const anomalySeverity = document.getElementById('anomaly-severity');
+    const severityText = document.getElementById('severity-text');
+    const severityBadge = document.getElementById('severity-badge');
+    const anomalyDetails = document.getElementById('anomaly-details');
+    const featuresList = document.getElementById('features-list');
+    
+    // Remove all previous states and animations
+    container.className = 'mb-6 p-6 rounded-lg border border-gray-200 transition-all duration-300';
+    
+    if (isAnomaly) {
+        normalState.classList.add('hidden');
+        anomalyState.classList.remove('hidden');
+        
+        // Update severity display
+        let severityDisplay = '';
+        let severityClass = '';
+        let iconClass = '';
+        
+        switch(severity.toLowerCase()) {
+            case 'high':
+                severityDisplay = 'High Severity Anomaly';
+                severityClass = 'severity-high';
+                iconClass = 'text-red-500';
+                container.classList.add('anomaly-high');
+                break;
+            case 'medium':
+                severityDisplay = 'Medium Severity Anomaly';
+                severityClass = 'severity-medium';
+                iconClass = 'text-orange-500';
+                container.classList.add('anomaly-medium');
+                break;
+            case 'low':
+                severityDisplay = 'Low Severity Anomaly';
+                severityClass = 'severity-low';
+                iconClass = 'text-yellow-500';
+                container.classList.add('anomaly-low');
+                break;
+            default:
+                severityDisplay = 'Anomaly Detected';
+                severityClass = 'severity-medium';
+                iconClass = 'text-orange-500';
+        }
+        
+        // Update UI elements
+        anomalyIcon.className = `text-5xl mb-3 ${iconClass}`;
+        anomalyIcon.innerHTML = severity === 'high' ? 
+            '<i class="fas fa-exclamation-triangle"></i>' : 
+            '<i class="fas fa-exclamation-circle"></i>';
+        
+        anomalySeverity.textContent = severityDisplay;
+        severityText.textContent = severity.toUpperCase();
+        severityBadge.className = `severity-badge ${severityClass}`;
+        
+        // Update anomaly details
+        if (featuresList && features) {
+            featuresList.innerHTML = '';
+            for (const [key, value] of Object.entries(features)) {
+                const div = document.createElement('div');
+                div.className = 'py-1 border-b border-gray-100 last:border-0';
+                div.innerHTML = `
+                    <span class="text-gray-700">${key}:</span>
+                    <span class="float-right font-mono">${typeof value === 'number' ? value.toFixed(4) : value}</span>
+                `;
+                featuresList.appendChild(div);
+            }
+        }
+        
+        // Update score
+        document.getElementById('anomaly-score').textContent = score.toFixed(4);
+        if (anomalyDetails) anomalyDetails.classList.remove('hidden');
+        
+    } else {
+        // Normal traffic
+        normalState.classList.remove('hidden');
+        anomalyState.classList.add('hidden');
+        container.classList.add('normal');
+        
+        // Update features list for normal traffic
+        if (featuresList && features) {
+            featuresList.innerHTML = '';
+            for (const [key, value] of Object.entries(features)) {
+                const div = document.createElement('div');
+                div.className = 'py-1 border-b border-gray-100 last:border-0';
+                div.innerHTML = `
+                    <span class="text-gray-700">${key}:</span>
+                    <span class="float-right font-mono">${typeof value === 'number' ? value.toFixed(4) : value}</span>
+                `;
+                featuresList.appendChild(div);
+            }
+        }
+        
+        // Update score (show confidence instead of anomaly score)
+        document.getElementById('anomaly-score').textContent = (1 - score).toFixed(4);
+        if (anomalyDetails) anomalyDetails.classList.remove('hidden');
+    }
+    
+    // Update timestamp
+    document.getElementById('detection-time').textContent = new Date().toLocaleString();
+}
+        
+        // Show toast notification
+        function showToast(title, message, type = 'info') {
+            // In a real implementation, you would use a toast library or implement a custom toast
+            console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+            // This is a placeholder - you would implement actual toast UI here
+        }
+        
+        async function detectAnomaly(data) {
+            updateStatus(true);
+            
+            try {
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Show result based on the response
+                showResult(
+                    result.is_anomaly || false,
+                    result.anomaly_score || 0,
+                    result.features || data,
+                    result.severity || 'normal'
+                );
+                
+                return result;
+            } catch (error) {
+                console.error('Error detecting anomaly:', error);
+                updateStatus(false, false);
+                showToast('Error', `Failed to detect anomaly: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+        
+        // Sample data generators with severity levels
+        function generateSampleData(anomalous = false) {
+            if (anomalous) {
+                // Randomly select severity level for anomalous data
+                const severityLevel = Math.random();
+                
+                if (severityLevel < 0.33) {
+                    // High severity anomaly (e.g., DDoS, port scan)
+                    return {
+                        'Destination Port': 22, // Common SSH port
+                        'Flow Duration': 50, // Very short duration
+                        'Total Fwd Packets': 5000, // High packet count
+                        'Total Length of Fwd Packets': 5000000, // Large data transfer
+                        'Fwd Packet Length Max': 1500, // Max Ethernet frame size
+                        'Fwd Packet Length Min': 1, // Very small packet
+                        'Fwd Packet Length Mean': 1000, // High average
+                        'Fwd Packet Length Std': 500, // High variability
+                        'Flow Bytes/s': 10000000, // Very high data rate
+                        'Flow Packets/s': 10000, // Very high packet rate
+                        '_severity': 'high' // Internal use only
+                    };
+                } else if (severityLevel < 0.66) {
+                    // Medium severity anomaly (e.g., port sweep, suspicious traffic)
+                    return {
+                        'Destination Port': Math.floor(Math.random() * 100) + 1, // Low port scan
+                        'Flow Duration': 500, // Short duration
+                        'Total Fwd Packets': 200, // Elevated packet count
+                        'Total Length of Fwd Packets': 200000, // Moderate data transfer
+                        'Fwd Packet Length Max': 1000, // Large packet
+                        'Fwd Packet Length Min': 10, // Small packet
+                        'Fwd Packet Length Mean': 500, // Elevated average
+                        'Fwd Packet Length Std': 300, // High variability
+                        'Flow Bytes/s': 1000000, // High data rate
+                        'Flow Packets/s': 1000, // High packet rate
+                        '_severity': 'medium'
+                    };
+                } else {
+                    // Low severity anomaly (slightly unusual traffic)
+                    return {
+                        'Destination Port': 8080, // Common alternative HTTP port
+                        'Flow Duration': 1000, // Normal duration
+                        'Total Fwd Packets': 150, // Slightly elevated
+                        'Total Length of Fwd Packets': 150000, // Slightly elevated
+                        'Fwd Packet Length Max': 800, // Slightly large
+                        'Fwd Packet Length Min': 50, // Normal min
+                        'Fwd Packet Length Mean': 300, // Slightly elevated
+                        'Fwd Packet Length Std': 100, // Slightly variable
+                        'Flow Bytes/s': 100000, // Slightly elevated
+                        'Flow Packets/s': 200, // Slightly elevated
+                        '_severity': 'low'
+                    };
+                }
+            } else {
+                // Generate normal data
+                return {
+                    'Destination Port': [80, 443, 53, 22, 21][Math.floor(Math.random() * 5)], // Common ports
+                    'Flow Duration': Math.floor(Math.random() * 2000) + 100,
+                    'Total Fwd Packets': Math.floor(Math.random() * 50) + 5,
+                    'Total Length of Fwd Packets': Math.floor(Math.random() * 50000) + 1000,
+                    'Fwd Packet Length Max': Math.floor(Math.random() * 500) + 100,
+                    'Fwd Packet Length Min': Math.floor(Math.random() * 50) + 20,
+                    'Fwd Packet Length Mean': Math.floor(Math.random() * 200) + 50,
+                    'Fwd Packet Length Std': Math.floor(Math.random() * 30) + 5,
+                    'Flow Bytes/s': Math.floor(Math.random() * 50000) + 1000,
+                    'Flow Packets/s': Math.floor(Math.random() * 50) + 5,
+                    '_severity': 'normal'
+                };
+            }
+        }
+        
+        // Test functions with severity levels
+        function testNormalTraffic() {
+            const data = generateSampleData(false);
+            detectAnomaly(data)
+                .then(result => {
+                    console.log('Normal traffic test result:', result);
+                })
+                .catch(error => {
+                    console.error('Error testing normal traffic:', error);
+                });
+        }
+        
+        function testAnomalousTraffic() {
+            const data = generateSampleData(true);
+            // Remove internal _severity field before sending to API
+            if ('_severity' in data) {
+                delete data._severity;
+            }
+            
+            // Show loading state
+            updateStatus(true);
+            
+            detectAnomaly(data)
+                .then(result => {
+                    console.log('Anomalous traffic test result:', result);
+                    showToast(
+                        'Test Complete', 
+                        `Anomaly detected: ${result.is_anomaly ? 'Yes' : 'No'}\n` +
+                        `Score: ${result.anomaly_score ? result.anomaly_score.toFixed(4) : 'N/A'}\n` +
+                        `Severity: ${result.severity || 'normal'}`,
+                        result.is_anomaly ? (result.severity || 'medium') : 'info'
+                    );
+                })
+                .catch(error => {
+                    console.error('Error testing anomalous traffic:', error);
+                    showToast('Error', `Test failed: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    updateStatus(false, true);
+                });
+        }
+        
+        function testRandomTraffic() {
+            const isAnomalous = Math.random() > 0.3; // 70% chance of normal, 30% chance of anomaly
+            const data = generateSampleData(isAnomalous);
+            
+            // Remove internal _severity field before sending to API
+            if ('_severity' in data) {
+                delete data._severity;
+            }
+            
+            // Show loading state
+            updateStatus(true);
+            
+            detectAnomaly(data)
+                .then(result => {
+                    console.log('Random traffic test result:', result);
+                    showToast(
+                        'Test Complete', 
+                        `Anomaly detected: ${result.is_anomaly ? 'Yes' : 'No'}\n` +
+                        `Score: ${result.anomaly_score ? result.anomaly_score.toFixed(4) : 'N/A'}\n` +
+                        `Severity: ${result.severity || 'normal'}`,
+                        result.is_anomaly ? (result.severity || 'medium') : 'info'
+                    );
+                })
+                .catch(error => {
+                    console.error('Error testing random traffic:', error);
+                    showToast('Error', `Test failed: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    updateStatus(false, true);
+                });
+        }
+        
+        // File upload handling with improved error handling and feedback
+        function processUploadedFile() {
+            const fileInput = document.getElementById('csv-upload');
+            const file = fileInput.files[0];
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            // Reset file input for better UX
+            const resetFileInput = () => {
+                fileInput.value = '';
+                document.getElementById('file-name').textContent = 'No file chosen';
+                analyzeBtn.disabled = true;
+            };
+            
+            // Validate file
+            if (!file) {
+                showToast('Error', 'Please select a file first', 'error');
+                return;
+            }
+            
+            // Show loading state
+            updateStatus(true);
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    // Only process first 1000 lines for performance
+                    const lines = csv.split('\n')
+                        .slice(0, 1000) // Limit to first 1000 lines
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0); // Remove empty lines
+                    
+                    if (lines.length < 2) {
+                        throw new Error('CSV file must contain at least one row of data after the header');
+                    }
+                    
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                    const data = {};
+                    
+                    // Process only the first data row (index 1 after header)
+                    const values = lines[1].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                    
+                    // Map headers to values with type conversion
+                    headers.forEach((header, index) => {
+                        if (index < values.length && values[index] !== '') {
+                            const value = values[index];
+                            const numValue = parseFloat(value);
+                            data[header] = isNaN(numValue) ? value : numValue;
+                        }
+                    });
+                    
+                    if (Object.keys(data).length === 0) {
+                        throw new Error('No valid data found in the file');
+                    }
+                    
+                    console.log('Processing uploaded data (first row):', data);
+                    
+                    // Show analyzing state on button
+                    analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analyzing...';
+                    
+                    // Detect anomalies in the uploaded data
+                    detectAnomaly(data)
+                        .then(result => {
+                            console.log('Analysis result:', result);
+                            // Update UI with results
+                            showResult(
+                                result.is_anomaly,
+                                result.anomaly_score,
+                                result.features || {},
+                                result.severity || 'normal'
+                            );
+                            showToast(
+                                'Analysis Complete',
+                                `Anomaly detected: ${result.is_anomaly ? 'Yes' : 'No'}\n` +
+                                `Score: ${result.anomaly_score ? result.anomaly_score.toFixed(4) : 'N/A'}\n` +
+                                `Severity: ${result.severity || 'normal'}`,
+                                result.is_anomaly ? (result.severity || 'medium') : 'info'
+                            );
+                        })
+                        .catch(error => {
+                            console.error('Analysis error:', error);
+                            if (!error.handled) {
+                                showToast('Analysis Error', error.message || 'Failed to analyze data', 'error');
+                            }
+                        })
+                        .finally(() => {
+                            // Reset button state
+                            analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+                            analyzeBtn.disabled = false;
+                            updateStatus(false, true);
+                            
+                            // Reset file input after processing
+                            fileInput.value = '';
+                            document.getElementById('file-name').textContent = 'No file chosen';
+                        });
+                        
+                } catch (error) {
+                    console.error('File processing error:', error);
+                    showToast('Error', `Failed to process file: ${error.message}`, 'error');
+                    analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+                    analyzeBtn.disabled = false;
+                    updateStatus(false, false);
+                }
+            };
+            
+            reader.onerror = function() {
+                console.error('FileReader error:', reader.error);
+                showToast('Error', 'Failed to read file. The file might be corrupted or in use by another program.', 'error');
+                analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+                analyzeBtn.disabled = false;
+                updateStatus(false, false);
+            };
+            
+            // Read the file as text with UTF-8 encoding
+            reader.readAsText(file, 'UTF-8');
+        }
+        
+        // File selection handler
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const fileName = file.name;
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const maxSizeMB = 1024; // 1GB in MB
+            
+            document.getElementById('file-name').textContent = `${fileName} (${fileSizeMB} MB)`;
+            
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            // Validate file type and size
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showToast('Error', 'Please upload a valid CSV file', 'error');
+                input.value = '';
+                document.getElementById('file-name').textContent = 'No file chosen';
+                analyzeBtn.disabled = true;
+            } else if (file.size > (maxSizeMB * 1024 * 1024)) {
+                showToast('Error', `File size (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB`, 'error');
+                input.value = '';
+                document.getElementById('file-name').textContent = 'No file chosen';
+                analyzeBtn.disabled = true;
+            } else {
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        // Process uploaded file
+function processUploadedFile() {
+    const fileInput = document.getElementById('csv-upload');
+    const file = fileInput.files[0];
+    const analyzeBtn = document.getElementById('analyze-btn');
+    
+    // Reset file input for better UX
+    const resetFileInput = () => {
+        fileInput.value = '';
+        document.getElementById('file-name').textContent = 'No file chosen';
+        analyzeBtn.disabled = true;
+    };
+    
+    // Validate file
+    if (!file) {
+        showToast('Error', 'Please select a file first', 'error');
+        return;
+    }
+    
+    // Check if file is empty
+    if (file.size === 0) {
+        showToast('Error', 'The selected file is empty', 'error');
+        return;
+    }
+    
+    // Show loading state
+    updateStatus(true);
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const csv = e.target.result;
+            console.log('File size:', file.size, 'bytes');
+            console.log('Raw CSV content (first 200 chars):', csv.substring(0, 200));
+            
+            if (!csv || csv.trim() === '') {
+                throw new Error('The file appears to be empty or contains no data');
+            }
+            
+            // Split lines and clean them up - handle both Windows and Unix line endings
+            const lines = csv.split(/\r\n|\n/)
+                .map(line => line.trim())
+                .filter(line => line.length > 0); // Remove empty lines
+            
+            console.log('Total non-empty lines found:', lines.length);
+            
+            // Log first few lines for debugging
+            console.log('First 3 lines:', lines.slice(0, 3));
+            
+            // Check if we have at least 2 lines (header + data)
+            if (lines.length < 2) {
+                throw new Error(`CSV file must contain at least one row of data after the header. Found only ${lines.length} line(s).`);
+            }
+            
+            // Check if the first line (header) has enough columns
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            console.log('Headers found:', headers);
+            
+            if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) {
+                throw new Error('CSV header is empty or invalid');
+            }
+            
+            // Process data rows (skip header)
+            const dataRows = lines.slice(1);
+            console.log('Data rows found:', dataRows.length);
+            
+            if (dataRows.length === 0) {
+                throw new Error('No data rows found in the CSV file');
+            }
+            
+            // Process first data row
+            const values = dataRows[0].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            console.log('First data row values:', values);
+            
+            // If we have empty values but they should be there, it might be a different delimiter
+            if (values.length === 1 && values[0] === '') {
+                console.warn('Only one empty value found - the file might be using a different delimiter than comma');
+            }
+            
+            const data = {};
+            
+            // Map headers to values with type conversion
+            headers.forEach((header, index) => {
+                if (index < values.length && values[index] !== '') {
+                    const value = values[index];
+                    const numValue = parseFloat(value);
+                    data[header] = isNaN(numValue) ? value : numValue;
+                }
+            });
+            
+            console.log('Processed data object:', data);
+            
+            if (Object.keys(data).length === 0) {
+                throw new Error('No valid data found in the first row of the file. Please check the file format.');
+            }
+            
+            // Show analyzing state on button
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analyzing...';
+            
+            // Detect anomalies in the uploaded data
+            detectAnomaly(data)
+                .then(result => {
+                    console.log('Analysis result:', result);
+                    // Update UI with results
+                    showResult(
+                        result.is_anomaly,
+                        result.anomaly_score,
+                        result.features || {},
+                        result.severity || 'normal'
+                    );
+                    showToast(
+                        'Analysis Complete',
+                        `Anomaly detected: ${result.is_anomaly ? 'Yes' : 'No'}\n` +
+                        `Score: ${result.anomaly_score ? result.anomaly_score.toFixed(4) : 'N/A'}\n` +
+                        `Severity: ${result.severity || 'normal'}`,
+                        result.is_anomaly ? (result.severity || 'medium') : 'info'
+                    );
+                })
+                .catch(error => {
+                    console.error('Analysis error:', error);
+                    if (!error.handled) {
+                        showToast('Analysis Error', error.message || 'Failed to analyze data', 'error');
+                    }
+                })
+                .finally(() => {
+                    // Reset button state
+                    analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+                    analyzeBtn.disabled = false;
+                    updateStatus(false, true);
+                    
+                    // Reset file input after processing
+                    resetFileInput();
+                });
+                
+        } catch (error) {
+            console.error('File processing error:', error);
+            showToast('Error', `Failed to process file: ${error.message}`, 'error');
+            analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+            analyzeBtn.disabled = false;
+            updateStatus(false, false);
+            
+            // Log the raw file content for debugging
+            console.log('Raw file content:', e.target.result);
+        }
+    };
+    
+    reader.onerror = function() {
+        console.error('FileReader error:', reader.error);
+        showToast('Error', 'Failed to read file. The file might be corrupted or in use by another program.', 'error');
+        analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i> Analyze Data';
+        analyzeBtn.disabled = false;
+        updateStatus(false, false);
+    };
+    
+    // Read the file as text with UTF-8 encoding
+    reader.readAsText(file, 'UTF-8');
+}
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Disable analyze button by default
+            const analyzeBtn = document.getElementById('analyze-btn');
+            if (analyzeBtn) {
+                analyzeBtn.disabled = true;
+            }
+            
+            // Set initial status
+            updateStatus(false, true);
+        });
+    </script>
+</body>
+</html>
