@@ -80,5 +80,5 @@ This project consists of two main components:
 
 1. **Clone the repository**:
    ```bash
-   git clone [https://github.com/yourusername/network-anomaly-detection.git](https://github.com/yourusername/network-anomaly-detection.git)
+   git clone [ https://github.com/prakrati3331/Network-Anomaly-Detection-System-Real-time-Monitoring-Analysis ]
    cd network-anomaly-detection
